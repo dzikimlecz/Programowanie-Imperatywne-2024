@@ -115,6 +115,19 @@ int pushCard(Card cards[NUM_CARDS], Card c, int* ix, int* size) {
     return 1;
 }
 
+void collectCards(
+    Card hand[NUM_CARDS],
+    int* handStart,
+    int* handSize,
+    Card stack[NUM_CARDS],
+    int stackSize
+) {
+     for (int i = 0; i < stackSize; ++i) {
+         pushCard(hand, stack[i], handStart, handSize);
+     }
+}
+
+
 Result war(int seed, int doWars, int maxConflicts) {
     // Inicjalizacja talii kart
     Card deck[NUM_CARDS];
@@ -161,23 +174,13 @@ Result war(int seed, int doWars, int maxConflicts) {
             if (conf > 0) {
                 // p2 < p1
                 unresolved = 0;
-                for (int i = 0; i < c1top; ++i) {
-                    pushCard(player1, c1[i], &hand1Start, &hand1);
-                }
-                for (int i = 0; i < c2top; ++i) {
-                    pushCard(player1, c2[i], &hand1Start, &hand1);
-                }
-                unresolved = 0;
+                collectCards(player1, &hand1Start, &hand1, c1, c1top);
+                collectCards(player1, &hand1Start, &hand1, c2, c2top);
             } else if (conf < 0) {
                 // p1 < p2
                 unresolved = 0;
-                for (int i = 0; i < c2top; ++i) {
-                    pushCard(player2, c2[i], &hand2Start, &hand2);
-                }
-                for (int i = 0; i < c1top; ++i) {
-                    pushCard(player2, c1[i], &hand2Start, &hand2);
-                }
-                unresolved = 0;
+                collectCards(player2, &hand2Start, &hand2, c2, c2top);
+                collectCards(player2, &hand2Start, &hand2, c1, c1top);
             } else if (conflicts) {
                 // war
                 if (doWars) {
@@ -191,12 +194,8 @@ Result war(int seed, int doWars, int maxConflicts) {
                     }
                 } else {
                     unresolved = 0;
-                    for (int i = 0; i < c1top; ++i) {
-                        pushCard(player1, c1[i], &hand1Start, &hand1);
-                    }
-                    for (int i = 0; i < c2top; ++i) {
-                        pushCard(player2, c2[i], &hand2Start, &hand2);
-                    }
+                    collectCards(player1, &hand1Start, &hand1, c1, c1top);
+                    collectCards(player2, &hand2Start, &hand2, c2, c2top);
                 }
             } else {
                 // nie starczyło konfliktów.
