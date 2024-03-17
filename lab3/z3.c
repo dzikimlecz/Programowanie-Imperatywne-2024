@@ -57,7 +57,11 @@ int main() {
     return 0;
 }
 
-
+typedef struct {
+    Card cards[NUM_CARDS];
+    int start;
+    int size;
+} Hand;
 
 
 // Funkcja do tasowania talii kart
@@ -89,44 +93,52 @@ int compareCards(Card card1, Card card2) {
 }
 
 
-Card takeCard(Card cards[NUM_CARDS], int* ix, int* size) {
-    if (*size) {
-        --(*size);
-        Card val = cards[*ix];
-        ++(*ix);
-        *ix %= NUM_CARDS;
+Card takeCard(Hand* hand) {
+    if (hand->size) {
+        --hand->size;
+        Card val = hand->cards[hand->start];
+        hand->start++;
+        hand->start %= NUM_CARDS;
         return val;
     }
     return -1;
 }
 
-int pushCard(Card cards[NUM_CARDS], Card c, int* ix, int* size) {
-    if (*size >= NUM_CARDS) {
+int pushCard(Hand* hand, Card card) {
+    if (hand->size >= NUM_CARDS) {
         return 0;
     }
-    if (*size == 0) {
-        *ix = 0;
-        cards[0] = c;
-        *size = 1;
+    if (hand->size) {
+        hand->cards[(hand->start + hand->size) % NUM_CARDS] = card;
+        ++hand->size;
     } else {
-        cards[(*ix + *size) % NUM_CARDS] = c;
-        ++(*size);
+        hand->start = 0;
+        hand->cards[0] = card;
+        hand->size = 1;
     }
     return 1;
 }
 
 void collectCards(
-    Card hand[NUM_CARDS],
-    int* handStart,
-    int* handSize,
+    Hand* hand,
     Card stack[NUM_CARDS],
     int stackSize
 ) {
      for (int i = 0; i < stackSize; ++i) {
-         pushCard(hand, stack[i], handStart, handSize);
+         pushCard(hand, stack[i]);
      }
 }
 
+void collectAllCards(
+    Hand* hand,
+    Card ownStack[NUM_CARDS],
+    int ownStackSize,
+    Card otherStack[NUM_CARDS],
+    int otherStackSize
+) {
+    collectCards(hand, ownStack, ownStackSize);
+    collectCards(hand, otherStack, otherStackSize);
+}
 
 Result war(int seed, int doWars, int maxConflicts) {
     // Inicjalizacja talii kart
@@ -137,20 +149,19 @@ Result war(int seed, int doWars, int maxConflicts) {
     srand(seed);
     shuffleDeck(deck, NUM_CARDS);
 
+
+
     // Deklaracja graczy
-    Card player1[NUM_CARDS] = {};
-    Card player2[NUM_CARDS] = {};
+    Hand handA, handB;
 
     // Rozdanie kart graczom
-    dealCards(deck, player1, player2);
+    dealCards(deck, handA.cards, handB.cards);
 
     // Rozmiary ręki każdego z graczy
-    int hand1, hand2;
-    hand1 = hand2 = HAND_SIZE;
+    handA.size = handB.size = HAND_SIZE;
 
     // Początek ręki każdego z graczy
-    int hand1Start, hand2Start;
-    hand1Start = hand2Start = 0;
+    handA.start = handB.start = 0;
 
     Result result;
     result.code = -1;
@@ -159,70 +170,68 @@ Result war(int seed, int doWars, int maxConflicts) {
     // Konflikty
     int conflicts = maxConflicts;
     int gameOngoing = conflicts;
-    Card c1[NUM_CARDS] = {};
-    Card c2[NUM_CARDS] = {};
-    int c1top, c2top;
+    Card stackA[NUM_CARDS] = {};
+    Card stackB[NUM_CARDS] = {};
+    int stackAsize, stackBsize;
 
     while (gameOngoing) {
-        c1top = c2top = 0;
+        stackAsize = stackBsize = 0;
         int unresolved = 1;
         while (gameOngoing && unresolved) {
-            c1[c1top++] = takeCard(player1, &hand1Start, &hand1);
-            c2[c2top++] = takeCard(player2, &hand2Start, &hand2);
-            int conf = compareCards(c1[c1top - 1], c2[c2top - 1]);
+            stackA[stackAsize++] = takeCard(&handA);
+            stackB[stackBsize++] = takeCard(&handB);
+            int conf = compareCards(stackA[stackAsize - 1], stackB[stackBsize - 1]);
             --conflicts;
             if (conf > 0) {
                 // p2 < p1
                 unresolved = 0;
-                collectCards(player1, &hand1Start, &hand1, c1, c1top);
-                collectCards(player1, &hand1Start, &hand1, c2, c2top);
+                collectAllCards(&handA, stackA, stackAsize, stackB, stackBsize);
             } else if (conf < 0) {
                 // p1 < p2
                 unresolved = 0;
-                collectCards(player2, &hand2Start, &hand2, c2, c2top);
-                collectCards(player2, &hand2Start, &hand2, c1, c1top);
+                collectAllCards(&handB, stackB, stackBsize, stackA, stackAsize);
             } else if (conflicts) {
                 // war
                 if (doWars) {
-                    c1[c1top++] = takeCard(player1, &hand1Start, &hand1);
-                    c2[c2top++] = takeCard(player2, &hand2Start, &hand2);
-                    if (c1[c1top - 1] == -1 || c2[c2top - 1] == -1) {
+                    stackA[stackAsize++] = takeCard(&handA);
+                    stackB[stackBsize++] = takeCard(&handB);
+                    if (stackA[stackAsize - 1] == -1 || stackB[stackBsize - 1] == -1) {
                         gameOngoing = 0;
                         result.code = 1;
-                        result.hand1 = hand1 + c1top;
-                        result.hand2 = hand2 + c2top;
+                        result.hand1 = handA.size + stackAsize;
+                        result.hand2 = handB.size + stackBsize;
                     }
                 } else {
                     unresolved = 0;
-                    collectCards(player1, &hand1Start, &hand1, c1, c1top);
-                    collectCards(player2, &hand2Start, &hand2, c2, c2top);
+                    collectCards(&handA, stackA, stackAsize);
+                    collectCards(&handB, stackB, stackBsize);
                 }
             } else {
                 // nie starczyło konfliktów.
                 gameOngoing = 0;
                 result.code = 0;
-                result.hand1 = hand1 + c1top;
-                result.hand2 = hand2 + c2top;
+                result.hand1 = handA.size + stackAsize;
+                result.hand2 = handB.size + stackBsize;
             }
-            if (!hand1 || !hand2) {
+            if (!handA.size || !handB.size) {
                 gameOngoing = 0;
                 if (!unresolved) {
-                    if (hand1) {
+                    if (handA.size) {
                         result.code = 2;
                         result.conflicts = maxConflicts - conflicts;
-                    } else if (hand2) {
+                    } else if (handB.size) {
                         result.code = 3;
-                        result.cards2 = (Card*) malloc(sizeof(Card) * (hand2 + 1));
-                        for (int i = 0; i < hand2; ++i) {
-                            result.cards2[i] = player2[(hand2Start + i) % NUM_CARDS];
+                        result.cards2 = (Card*) malloc(sizeof(Card) * (handB.size + 1));
+                        for (int i = 0; i < handB.size; ++i) {
+                            result.cards2[i] = handB.cards[(handB.start + i) % NUM_CARDS];
                         }
-                        result.cards2[hand2] = -1;
+                        result.cards2[handB.size] = -1;
                     }
                 } else {
                     gameOngoing = 0;
                     result.code = 1;
-                    result.hand1 = hand1 + c1top;
-                    result.hand2 = hand2 + c2top;
+                    result.hand1 = handA.size + stackAsize;
+                    result.hand2 = handB.size + stackBsize;
                 }
             }
         }
