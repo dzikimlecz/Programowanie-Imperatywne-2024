@@ -85,6 +85,10 @@ void dealCards(Card cards[NUM_CARDS], Card player1[NUM_CARDS], Card player2[NUM_
         player1[i] = cards[i];
         player2[i] = cards[HAND_SIZE + i];
     }
+    for (int i = 0; i < HAND_SIZE; i++) {
+        player1[HAND_SIZE + i] = -1;
+        player2[HAND_SIZE + i] = -1;
+    }
 }
 
 // Funkcja do porównywania kart
@@ -95,7 +99,7 @@ int compareCards(Card card1, Card card2) {
 
 Card takeCard(Hand* hand) {
     if (hand->size) {
-        --hand->size;
+        hand->size--;
         Card val = hand->cards[hand->start];
         hand->start++;
         hand->start %= NUM_CARDS;
@@ -110,7 +114,7 @@ int pushCard(Hand* hand, Card card) {
     }
     if (hand->size) {
         hand->cards[(hand->start + hand->size) % NUM_CARDS] = card;
-        ++hand->size;
+        hand->size++;
     } else {
         hand->start = 0;
         hand->cards[0] = card;
@@ -148,8 +152,6 @@ Result war(int seed, int doWars, int maxConflicts) {
     // Tasowanie talii kart
     srand(seed);
     shuffleDeck(deck, NUM_CARDS);
-
-
 
     // Deklaracja graczy
     Hand handA, handB;
