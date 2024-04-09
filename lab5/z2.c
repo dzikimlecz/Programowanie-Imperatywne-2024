@@ -53,6 +53,9 @@ void seekLineEnd(FILE *stream) {
     int c;
     do {
       c = fgetc(stream);
+      if (c == '\\') {
+          fgetc(stream);
+      }
     } while (c != EOF && c != '\n');
 }
 
