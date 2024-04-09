@@ -56,11 +56,11 @@ void seekLineEnd(FILE *stream) {
     } while (c != EOF && c != '\n');
 }
 
-void seekStringEnd(FILE *stream) {
+void seekStringEnd(FILE *stream, char delimiter) {
     int c;
     do {
       c = fgetc(stream);
-    } while (c != EOF && c != '"' && c != '\'');
+    } while (c != EOF && c != delimiter);
 }
 
 int isDig(int c) {
@@ -82,7 +82,7 @@ int nextToken(char buff[MAX_ID_LEN + 1], FILE* stream) {
     switch (_c) {
     case '"':
     case '\'':
-        seekStringEnd(stream);
+        seekStringEnd(stream, _c);
         break;
     case '/':
         switch (fgetc(stream)) {
