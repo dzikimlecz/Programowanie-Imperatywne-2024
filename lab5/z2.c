@@ -132,7 +132,7 @@ int find_idents(FILE *stream) {
         if (isTokenValid(tokens[idCount], tokenLen) && isTokenNew(tokens, idCount)) {
             ++idCount;
         } else {
-            memset(tokens[idCount], 0, (MAX_ID_LEN + 1)*sizeof(char));
+            memset(tokens[idCount], 0, (tokenLen)*sizeof(char));
         }
     } while (tokenLen != -1);
     return idCount;
